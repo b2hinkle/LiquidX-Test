@@ -45,6 +45,10 @@ class ALiquidX_TestCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* BackstabAction;
 
+	/** Look Input Action */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
+		TSubclassOf<AActor> ProjectileClass;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
 		float ShootDistance;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
@@ -63,6 +67,8 @@ protected:
 
 	void Shoot();
 	void StopShoot();
+	UFUNCTION(Server, Reliable)
+		void ServerStopShoot();
 
 	void Backstab();
 			

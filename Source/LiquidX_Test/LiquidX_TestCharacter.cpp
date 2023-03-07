@@ -11,8 +11,9 @@
 #include "EnhancedInputSubsystems.h"
 
 
-#include "Utilities/LXCollisionChannels.h"
+#include "Utilities/LX_CollisionChannels.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "LX_Projectile.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -140,8 +141,8 @@ void ALiquidX_TestCharacter::Look(const FInputActionValue& Value)
 
 void ALiquidX_TestCharacter::Shoot()
 {
-	FVector StartLocation = GetActorLocation();
-	FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+	const FVector StartLocation = GetActorLocation();
+	const FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
 
 	FHitResult OutHit;
 	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
@@ -149,13 +150,29 @@ void ALiquidX_TestCharacter::Shoot()
 }
 void ALiquidX_TestCharacter::StopShoot()
 {
-	FVector StartLocation = GetActorLocation();
-	FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+	ServerStopShoot();
+}
+
+void ALiquidX_TestCharacter::ServerStopShoot_Implementation()
+{
+	const FVector StartLocation = GetActorLocation();
+	const FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
 	FHitResult OutHit;
 	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForDuration, OutHit, true, FLinearColor::Red, FLinearColor::Green, 5);
 	if (bBlockingHit)
 	{
+		AActor* HitActor = OutHit.GetActor();
 
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Owner = this;
+		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ProjectileClass, GetActorTransform(), SpawnParameters);
+		ALX_Projectile* SpawnedProjectile = Cast<ALX_Projectile>(SpawnedActor);
+
+		if (IsValid(HitActor))
+		{
+			SpawnedProjectile->PawnToChase = Cast<APawn>(HitActor);
+		}
 	}
 }
 
