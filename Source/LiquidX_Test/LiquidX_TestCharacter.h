@@ -46,13 +46,25 @@ class ALiquidX_TestCharacter : public ACharacter
 	class UInputAction* BackstabAction;
 
 	/** Look Input Action */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = CharacterVisuals)
+		UParticleSystem* DeathParticleSystem;
+
+	/** Look Input Action */
+	UPROPERTY(EditAnywhere, Category = CharacterVisuals)
+		USoundBase* DeathSound;
+
+	/** Look Input Action */
+	UPROPERTY(EditDefaultsOnly, Category = Shoot)
 		TSubclassOf<AActor> ProjectileClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
 		float ShootDistance;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
 		float SphereSweepRadius;
+
+
+	/** Angle representing character's view (from his/her foward, all the way to his/her peripheral vision). */
+	static float CharacterFOV;
 public:
 	ALiquidX_TestCharacter();
 	
@@ -71,14 +83,16 @@ protected:
 		void ServerStopShoot();
 
 	void Backstab();
-			
+	void StopBackstab();
+	UFUNCTION(Server, Reliable)
+		void ServerStopBackstab();
 
-protected:
-	// APawn interface
+	static bool CanBackstab(const AActor* A, const AActor* B, const float ThresholdAngle);
+	static bool IsInFOV(const AActor* A, const AActor* B, const float ThresholdAngle);
+
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
-	// To add mapping context
 	virtual void BeginPlay();
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 
 public:
 	/** Returns CameraBoom subobject **/

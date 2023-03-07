@@ -3,37 +3,46 @@
 
 #include "LX_Projectile.h"
 
+#include "LiquidX_TestCharacter.h"
+
 ALX_Projectile::ALX_Projectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	SetReplicates(true);
+	bReplicates = true;
 	SetReplicateMovement(true);
 
 	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Scene Component"));
 	SetRootComponent(SceneComponent);
 	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Projectile Mesh"));
 	ProjectileMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
 	ProjectileMesh->SetupAttachment(RootComponent);
 
-	Speed = 5;
+	Speed = 150;
 }
 
 void ALX_Projectile::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ProjectileMesh->OnComponentBeginOverlap.AddDynamic(this, &ALX_Projectile::OnDeadlyBoxBeginOverlap);
+	ProjectileMesh->OnComponentBeginOverlap.AddDynamic(this, &ALX_Projectile::OnProjectileBeginOverlap);
 }
 
-void ALX_Projectile::OnDeadlyBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ALX_Projectile::OnProjectileBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (IsValid(OtherActor))
+	if (GetLocalRole() != ENetRole::ROLE_Authority)
 	{
-		if (OtherActor->IsA<APawn>() && OtherActor != GetOwner()) 
+		return;
+	}
+
+	if (IsValid(OtherActor) && OtherActor != GetOwner())
+	{
+		ALiquidX_TestCharacter* LXTest_Character = Cast<ALiquidX_TestCharacter>(OtherActor);
+		if (IsValid(LXTest_Character))
 		{
-			OtherActor->Destroy();
-			Destroy();
+			LXTest_Character->Destroy();
 		}
+		Destroy();
 	}
 }
 
@@ -46,14 +55,14 @@ void ALX_Projectile::Tick(float DeltaTime)
 		AddActorLocalRotation(FRotator(100, 100, 100));
 		if (PawnToChase.IsValid())
 		{
-			FVector ThisActorLocation = GetActorLocation();
-			FVector PawnToChaseActorLocation = PawnToChase->GetActorLocation();
-			FVector NewLocation = (PawnToChaseActorLocation - ThisActorLocation).GetSafeNormal() * Speed;
+			const FVector ThisActorLocation = GetActorLocation();
+			const FVector PawnToChaseActorLocation = PawnToChase->GetActorLocation();
+			const FVector NewLocation = (PawnToChaseActorLocation - ThisActorLocation).GetSafeNormal() * Speed * DeltaTime;
 			AddActorWorldOffset(NewLocation);
 		}
 		else
 		{
-			AddActorLocalOffset(GetActorForwardVector() * Speed);
+			AddActorLocalOffset(GetActorForwardVector() * Speed * DeltaTime);
 		}
 	}
 

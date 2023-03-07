@@ -14,10 +14,9 @@
 #include "Utilities/LX_CollisionChannels.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "LX_Projectile.h"
+#include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
-
-//////////////////////////////////////////////////////////////////////////
-// ALiquidX_TestCharacter
+float ALiquidX_TestCharacter::CharacterFOV = 150;
 
 ALiquidX_TestCharacter::ALiquidX_TestCharacter()
 {
@@ -52,7 +51,7 @@ ALiquidX_TestCharacter::ALiquidX_TestCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	ShootDistance = 1000;
+	ShootDistance = 10000;
 	SphereSweepRadius = 50;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
@@ -97,7 +96,8 @@ void ALiquidX_TestCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &ALiquidX_TestCharacter::StopShoot);
 
 		//Backstab
-		EnhancedInputComponent->BindAction(BackstabAction, ETriggerEvent::Started, this, &ALiquidX_TestCharacter::Backstab);
+		EnhancedInputComponent->BindAction(BackstabAction, ETriggerEvent::Triggered, this, &ALiquidX_TestCharacter::Backstab);
+		EnhancedInputComponent->BindAction(BackstabAction, ETriggerEvent::Completed, this, &ALiquidX_TestCharacter::StopBackstab);
 	}
 
 }
@@ -142,7 +142,7 @@ void ALiquidX_TestCharacter::Look(const FInputActionValue& Value)
 void ALiquidX_TestCharacter::Shoot()
 {
 	const FVector StartLocation = GetActorLocation();
-	const FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootDistance);
 
 	FHitResult OutHit;
 	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
@@ -156,30 +156,100 @@ void ALiquidX_TestCharacter::StopShoot()
 void ALiquidX_TestCharacter::ServerStopShoot_Implementation()
 {
 	const FVector StartLocation = GetActorLocation();
-	const FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootDistance);
 	FHitResult OutHit;
-	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForDuration, OutHit, true, FLinearColor::Red, FLinearColor::Green, 5);
+	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
 	if (bBlockingHit)
 	{
-		AActor* HitActor = OutHit.GetActor();
-
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Owner = this;
-		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ProjectileClass, GetActorTransform(), SpawnParameters);
-		ALX_Projectile* SpawnedProjectile = Cast<ALX_Projectile>(SpawnedActor);
-
-		if (IsValid(HitActor))
+		const AActor* HitActor = OutHit.GetActor();
+		if (IsValid(HitActor) && HitActor->IsA<APawn>())
 		{
-			SpawnedProjectile->PawnToChase = Cast<APawn>(HitActor);
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.Owner = this;
+			SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			ALX_Projectile* SpawnedProjectile = GetWorld()->SpawnActor<ALX_Projectile>(ProjectileClass, GetActorTransform(), SpawnParameters);
+
+			if (IsValid(SpawnedProjectile))
+			{
+				if (APawn* HitPawn = Cast<APawn>(OutHit.GetActor()))
+				{
+					SpawnedProjectile->PawnToChase = HitPawn;
+				}
+			}
 		}
 	}
 }
 
 void ALiquidX_TestCharacter::Backstab()
 {
-	UE_LOG(LogTemp, Warning, TEXT("s"));
+	TArray<FOverlapResult> OverlapResults;
+	const FVector BoxHalfExtent = FVector(3, 25, 50);
+	const FVector TraceStart = GetActorLocation();
+	const FVector TraceEnd = GetActorLocation() + (GetActorForwardVector() * 50);
+	FHitResult OutHit = FHitResult();
+	UKismetSystemLibrary::BoxTraceSingle(this, TraceStart, TraceEnd, BoxHalfExtent, GetActorRotation(), UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
 }
+void ALiquidX_TestCharacter::StopBackstab()
+{
+	ServerStopBackstab();
+}
+
+void ALiquidX_TestCharacter::ServerStopBackstab_Implementation()
+{
+	TArray<FOverlapResult> OverlapResults;
+	const FVector BoxHalfExtent = FVector(3, 25, 50);
+	const FVector TraceStart = GetActorLocation();
+	const FVector TraceEnd = GetActorLocation() + (GetActorForwardVector() * 50);
+	FHitResult OutHit = FHitResult();
+	UKismetSystemLibrary::BoxTraceSingle(this, TraceStart, TraceEnd, BoxHalfExtent, GetActorRotation(), UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
+	
+
+	AActor* Actor = OutHit.GetActor();
+	if (IsValid(Actor) && Actor->IsA<APawn>() && Actor != this)
+	{
+		if (CanBackstab(this, Actor, CharacterFOV))
+		{
+			Actor->Destroy();
+		}
+	}
+}
+
+bool ALiquidX_TestCharacter::CanBackstab(const AActor* A, const AActor* B, const float ThresholdAngle)
+{
+	const bool ASeesB = IsInFOV(A, B, ThresholdAngle);
+	const bool BSeesA = IsInFOV(B, A, ThresholdAngle);
+	return ASeesB && !BSeesA;
+}
+
+bool ALiquidX_TestCharacter::IsInFOV(const AActor* A, const AActor* B, const float ThresholdAngle)
+{
+	const FVector AFwd = A->GetActorForwardVector();
+	const FVector AToB = (B->GetActorLocation() - A->GetActorLocation()).GetSafeNormal();
+	const float Dot = FVector::DotProduct(AFwd, AToB);
+	const float RadianAngle = FMath::Acos(Dot);
+	const float DegreeAngle = RadianAngle * (180/PI);
+
+
+	UKismetSystemLibrary::PrintString(A, FString::SanitizeFloat(DegreeAngle));
+	if (DegreeAngle < ThresholdAngle)
+	{
+		return true;
+	}
+	return false;
+}
+
+void ALiquidX_TestCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	if (EndPlayReason == EEndPlayReason::Destroyed)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticleSystem, GetActorTransform());
+		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), DeathSound, GetActorLocation(), GetActorRotation(), .1);
+	}
+}
+
+
 
 
 
