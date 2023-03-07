@@ -45,6 +45,10 @@ class ALiquidX_TestCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* BackstabAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
+		float ShootDistance;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
+		float SphereSweepRadius;
 public:
 	ALiquidX_TestCharacter();
 	

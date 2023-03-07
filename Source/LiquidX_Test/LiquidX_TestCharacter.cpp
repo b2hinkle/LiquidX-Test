@@ -11,6 +11,10 @@
 #include "EnhancedInputSubsystems.h"
 
 
+#include "Utilities/LXCollisionChannels.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+
 //////////////////////////////////////////////////////////////////////////
 // ALiquidX_TestCharacter
 
@@ -46,6 +50,9 @@ ALiquidX_TestCharacter::ALiquidX_TestCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
+	ShootDistance = 1000;
+	SphereSweepRadius = 50;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
@@ -133,11 +140,23 @@ void ALiquidX_TestCharacter::Look(const FInputActionValue& Value)
 
 void ALiquidX_TestCharacter::Shoot()
 {
-	UE_LOG(LogTemp, Warning, TEXT("s"));
+	FVector StartLocation = GetActorLocation();
+	FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+
+	FHitResult OutHit;
+	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
+
 }
 void ALiquidX_TestCharacter::StopShoot()
 {
-	UE_LOG(LogTemp, Warning, TEXT("f"));
+	FVector StartLocation = GetActorLocation();
+	FVector EndLocation = StartLocation + (GetActorForwardVector() * ShootDistance);
+	FHitResult OutHit;
+	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForDuration, OutHit, true, FLinearColor::Red, FLinearColor::Green, 5);
+	if (bBlockingHit)
+	{
+
+	}
 }
 
 void ALiquidX_TestCharacter::Backstab()
