@@ -84,6 +84,12 @@ void ALiquidX_TestCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 		//Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ALiquidX_TestCharacter::Look);
 
+		//Shooting
+		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Triggered, this, &ALiquidX_TestCharacter::Shoot);
+		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &ALiquidX_TestCharacter::StopShoot);
+
+		//Backstab
+		EnhancedInputComponent->BindAction(BackstabAction, ETriggerEvent::Started, this, &ALiquidX_TestCharacter::Backstab);
 	}
 
 }
@@ -122,6 +128,21 @@ void ALiquidX_TestCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+
+void ALiquidX_TestCharacter::Shoot()
+{
+	UE_LOG(LogTemp, Warning, TEXT("s"));
+}
+void ALiquidX_TestCharacter::StopShoot()
+{
+	UE_LOG(LogTemp, Warning, TEXT("f"));
+}
+
+void ALiquidX_TestCharacter::Backstab()
+{
+	UE_LOG(LogTemp, Warning, TEXT("s"));
 }
 
 
