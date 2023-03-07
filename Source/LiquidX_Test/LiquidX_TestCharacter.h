@@ -57,14 +57,15 @@ class ALiquidX_TestCharacter : public ACharacter
 	UPROPERTY(EditDefaultsOnly, Category = Shoot)
 		TSubclassOf<AActor> ProjectileClass;
 
+	/** How far the targeting reaches in cm */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
-		float ShootDistance;
+		float ShootTargetingDistance;
+	/** How large the targeting sphere is */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Shoot, meta = (AllowPrivateAccess = "true"))
-		float SphereSweepRadius;
-
-
+		float ShootTargetingSphereRadius;
 	/** Angle representing character's view (from his/her foward, all the way to his/her peripheral vision). */
 	static float CharacterFOV;
+
 public:
 	ALiquidX_TestCharacter();
 	
@@ -77,12 +78,18 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
+	/** Targeting event */
 	void Shoot();
+	/** Confirming event */
 	void StopShoot();
+
+	/** Gameplay logic  */
 	UFUNCTION(Server, Reliable)
 		void ServerStopShoot();
 
+	/** Targeting event */
 	void Backstab();
+	/** Confirming event */
 	void StopBackstab();
 	UFUNCTION(Server, Reliable)
 		void ServerStopBackstab();

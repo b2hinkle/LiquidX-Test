@@ -51,8 +51,8 @@ ALiquidX_TestCharacter::ALiquidX_TestCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	ShootDistance = 10000;
-	SphereSweepRadius = 50;
+	ShootTargetingDistance = 10000;
+	ShootTargetingSphereRadius = 50;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
@@ -142,10 +142,10 @@ void ALiquidX_TestCharacter::Look(const FInputActionValue& Value)
 void ALiquidX_TestCharacter::Shoot()
 {
 	const FVector StartLocation = GetActorLocation();
-	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootDistance);
+	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootTargetingDistance);
 
 	FHitResult OutHit;
-	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
+	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, ShootTargetingSphereRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
 
 }
 void ALiquidX_TestCharacter::StopShoot()
@@ -156,9 +156,9 @@ void ALiquidX_TestCharacter::StopShoot()
 void ALiquidX_TestCharacter::ServerStopShoot_Implementation()
 {
 	const FVector StartLocation = GetActorLocation();
-	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootDistance);
+	const FVector EndLocation = StartLocation + (GetControlRotation().Vector() * ShootTargetingDistance);
 	FHitResult OutHit;
-	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, SphereSweepRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
+	const bool bBlockingHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), StartLocation, EndLocation, ShootTargetingSphereRadius, UEngineTypes::ConvertToTraceType(COLLISIONCHANNEL_SHOOT), false, { this }, EDrawDebugTrace::ForOneFrame, OutHit, true);
 	if (bBlockingHit)
 	{
 		const AActor* HitActor = OutHit.GetActor();
@@ -224,18 +224,12 @@ bool ALiquidX_TestCharacter::CanBackstab(const AActor* A, const AActor* B, const
 bool ALiquidX_TestCharacter::IsInFOV(const AActor* A, const AActor* B, const float ThresholdAngle)
 {
 	const FVector AFwd = A->GetActorForwardVector();
-	const FVector AToB = (B->GetActorLocation() - A->GetActorLocation()).GetSafeNormal();
+	const FVector AToB = (B->GetActorLocation() - A->GetActorLocation()).GetSafeNormal(); // normalized vectors allow us to skip a step when obtaining the angle
 	const float Dot = FVector::DotProduct(AFwd, AToB);
 	const float RadianAngle = FMath::Acos(Dot);
-	const float DegreeAngle = RadianAngle * (180/PI);
+	const float DegreeAngle = RadianAngle * (180/PI); // convert from radians
 
-
-	UKismetSystemLibrary::PrintString(A, FString::SanitizeFloat(DegreeAngle));
-	if (DegreeAngle < ThresholdAngle)
-	{
-		return true;
-	}
-	return false;
+	return DegreeAngle <= ThresholdAngle;
 }
 
 void ALiquidX_TestCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -248,9 +242,3 @@ void ALiquidX_TestCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), DeathSound, GetActorLocation(), GetActorRotation(), .1);
 	}
 }
-
-
-
-
-
-

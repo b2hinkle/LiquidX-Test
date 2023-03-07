@@ -1,2 +1,9 @@
-
 # Documentation
+This project is an extension of the third person template that introduces two networked multiplayer game mechanics: backstabbing and shooting projectiles. Both of these abilities are activated by holding down the input key to show the area of attack and confirming the attack by releasing the key.
+
+Backstabbing is a gameplay mechanic commonly seen in multiplayer games where a player can get an instant kill by attacking an opponent from behind. To perform a backstab, the player holds the left mouse button to show the area being targeted, and releases the button to confirm the backstab. 
+For the implementation, we can know if the player is facing the enemy by checking if the angle between the player character's forward direction and their line of sight to the enemy is below a certain threshold. We can also know if the enemy is not facing the player by using the same calculation with reversed roles. If both checks pass, the backstab is successful, resulting in a one-hit kill on the enemy. It took three hours to implement this feature.
+
+The projectile ability spawns a slowly moving projectile that follows the targeted enemy until it hits an obstacle. To perform this ability, the player holds the right mouse button to target an enemy, and confirms the attack by releasing. The game performs a sphere trace to query for targets, then injects the targeted enemy into a spawned projectile class. The enemy can escape the projectile by moving behind obstacles. It took two hours to implement this game feature.
+
+Overall, I am satisfied with the progress I made, but there were aspects that I feel could have been further developed. Due to time constraints, I had to settle on leaving the abilities’ logic in the character class instead of using separate actor components, which goes against my preference for code organization. Also, although I’m proud of my backstab implementation, gathering a potential target for backstabbing received little attention. Given more time, I would have liked to explore alternative solutions and improve the overall functionality and performance of these game mechanics.
